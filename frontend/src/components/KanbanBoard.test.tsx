@@ -15,13 +15,36 @@ const renderBoard = async () => {
 
 describe("KanbanBoard", () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => initialData,
-      })
-    );
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/board" && (!init?.method || init.method === "GET")) {
+        return { ok: true, json: async () => initialData } as Response;
+      }
+      if (url === "/api/board" && init?.method === "PUT") {
+        return { ok: true, json: async () => initialData } as Response;
+      }
+      if (url === "/api/ai/chat") {
+        return {
+          ok: true,
+          json: async () => ({
+            message: "Added a card.",
+            operations: [
+              {
+                type: "create",
+                cardId: "card-ai",
+                columnId: "col-backlog",
+                position: 0,
+                title: "AI card",
+                details: "From the assistant.",
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
@@ -72,5 +95,16 @@ describe("KanbanBoard", () => {
     await userEvent.click(deleteButton);
 
     expect(within(column).queryByText("New card")).not.toBeInTheDocument();
+  });
+
+  it("applies AI operations to the board", async () => {
+    await renderBoard();
+    const input = screen.getByPlaceholderText(/ask the ai/i);
+    await userEvent.type(input, "Add a card");
+    await userEvent.click(screen.getByRole("button", { name: /send to ai/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("AI card")).toBeInTheDocument();
+    });
   });
 });

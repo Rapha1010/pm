@@ -13,7 +13,22 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
+import { AiChatSidebar, type ChatMessage } from "@/components/AiChatSidebar";
 import { createId, initialData, moveCard, type BoardData } from "@/lib/kanban";
+
+type AIOperation = {
+  type: "create" | "update" | "move" | "delete";
+  cardId?: string;
+  columnId?: string;
+  position?: number;
+  title?: string;
+  details?: string;
+};
+
+type AIResponse = {
+  message: string;
+  operations?: AIOperation[];
+};
 
 export const KanbanBoard = () => {
   const [board, setBoard] = useState<BoardData>(() => initialData);
@@ -22,6 +37,11 @@ export const KanbanBoard = () => {
     "loading"
   );
   const hasLoadedRef = useRef(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatStatus, setChatStatus] = useState<"idle" | "sending" | "error">("idle");
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(true);
 
   useEffect(() => {
     let isActive = true;
@@ -61,6 +81,96 @@ export const KanbanBoard = () => {
 
   const cardsById = useMemo(() => board.cards, [board.cards]);
 
+  const cloneBoard = (data: BoardData): BoardData => ({
+    columns: data.columns.map((column) => ({
+      ...column,
+      cardIds: [...column.cardIds],
+    })),
+    cards: { ...data.cards },
+  });
+
+  const insertAt = (list: string[], index: number | undefined, value: string) => {
+    const next = [...list];
+    const safeIndex =
+      index === undefined ? next.length : Math.max(0, Math.min(index, next.length));
+    next.splice(safeIndex, 0, value);
+    return next;
+  };
+
+  const applyOperations = (data: BoardData, operations: AIOperation[]) => {
+    const next = cloneBoard(data);
+
+    operations.forEach((operation) => {
+      if (operation.type === "create") {
+        if (!operation.columnId) {
+          return;
+        }
+        const column = next.columns.find((col) => col.id === operation.columnId);
+        if (!column) {
+          return;
+        }
+        const cardId = operation.cardId || createId("card");
+        if (next.cards[cardId]) {
+          return;
+        }
+        next.cards[cardId] = {
+          id: cardId,
+          title: operation.title || "Untitled",
+          details: operation.details || "No details yet.",
+        };
+        column.cardIds = insertAt(column.cardIds, operation.position, cardId);
+      }
+
+      if (operation.type === "update") {
+        if (!operation.cardId || !next.cards[operation.cardId]) {
+          return;
+        }
+        const existing = next.cards[operation.cardId];
+        next.cards[operation.cardId] = {
+          ...existing,
+          title: operation.title ?? existing.title,
+          details: operation.details ?? existing.details,
+        };
+      }
+
+      if (operation.type === "move") {
+        if (!operation.cardId) {
+          return;
+        }
+        const sourceColumn = next.columns.find((col) =>
+          col.cardIds.includes(operation.cardId as string)
+        );
+        const targetColumn = operation.columnId
+          ? next.columns.find((col) => col.id === operation.columnId)
+          : sourceColumn;
+        if (!sourceColumn || !targetColumn) {
+          return;
+        }
+        sourceColumn.cardIds = sourceColumn.cardIds.filter(
+          (id) => id !== operation.cardId
+        );
+        targetColumn.cardIds = insertAt(
+          targetColumn.cardIds,
+          operation.position,
+          operation.cardId
+        );
+      }
+
+      if (operation.type === "delete") {
+        if (!operation.cardId || !next.cards[operation.cardId]) {
+          return;
+        }
+        delete next.cards[operation.cardId];
+        next.columns = next.columns.map((col) => ({
+          ...col,
+          cardIds: col.cardIds.filter((id) => id !== operation.cardId),
+        }));
+      }
+    });
+
+    return next;
+  };
+
   const persistBoard = async (nextBoard: BoardData) => {
     if (!hasLoadedRef.current) {
       return;
@@ -87,6 +197,38 @@ export const KanbanBoard = () => {
       void persistBoard(next);
       return next;
     });
+  };
+
+  const handleSendChat = async () => {
+    const question = chatInput.trim();
+    if (!question) {
+      return;
+    }
+    const history = chatMessages;
+    setChatInput("");
+    setChatMessages((prev) => [...prev, { role: "user", content: question }]);
+    setChatStatus("sending");
+    setChatError(null);
+
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, history }),
+      });
+      if (!response.ok) {
+        throw new Error("AI request failed");
+      }
+      const data = (await response.json()) as AIResponse;
+      setChatMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      if (data.operations && data.operations.length > 0) {
+        updateBoard((prev) => applyOperations(prev, data.operations ?? []));
+      }
+      setChatStatus("idle");
+    } catch (error) {
+      setChatStatus("error");
+      setChatError("AI request failed. Please try again.");
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -208,32 +350,45 @@ export const KanbanBoard = () => {
           </div>
         </header>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <section className="grid gap-6 lg:grid-cols-5">
-            {board.columns.map((column) => (
-              <KanbanColumn
-                key={column.id}
-                column={column}
-                cards={column.cardIds.map((cardId) => board.cards[cardId])}
-                onRename={handleRenameColumn}
-                onAddCard={handleAddCard}
-                onDeleteCard={handleDeleteCard}
-              />
-            ))}
-          </section>
-          <DragOverlay>
-            {activeCard ? (
-              <div className="w-[260px]">
-                <KanbanCardPreview card={activeCard} />
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <section className="grid gap-6 lg:grid-cols-5">
+              {board.columns.map((column) => (
+                <KanbanColumn
+                  key={column.id}
+                  column={column}
+                  cards={column.cardIds.map((cardId) => board.cards[cardId])}
+                  onRename={handleRenameColumn}
+                  onAddCard={handleAddCard}
+                  onDeleteCard={handleDeleteCard}
+                />
+              ))}
+            </section>
+            <DragOverlay>
+              {activeCard ? (
+                <div className="w-[260px]">
+                  <KanbanCardPreview card={activeCard} />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+
+          <AiChatSidebar
+            messages={chatMessages}
+            input={chatInput}
+            onInputChange={setChatInput}
+            onSend={handleSendChat}
+            isSending={chatStatus === "sending"}
+            error={chatError}
+            isOpen={isChatOpen}
+            onToggle={() => setIsChatOpen((open) => !open)}
+          />
+        </div>
       </main>
     </div>
   );

@@ -38,12 +38,15 @@ Part 7: Frontend + Backend (Complete)
 Now have the frontend actually use the backend API, so that the app is a proper persistent Kanban board. Test very throughly (Vitest unit/integration + Playwright E2E).
 Status: Completed on 2026-04-01.
 
-Part 8: AI connectivity
+Part 8: AI connectivity (Complete)
 
 Now allow the backend to make an AI call via OpenRouter. Test connectivity with a simple "2+2" test and ensure the AI call is working.
+Status: Completed on 2026-04-01.
 
 Part 9: Now extend the backend call so that it always calls the AI with the JSON of the Kanban board, plus the user's question (and conversation history). The AI should respond with Structured Outputs that includes the response to the user and optionaly an update to the Kanban. Test thoroughly.
+Status: Completed on 2026-04-01.
 
 Structured Outputs format: operation list model (response text plus list of card operations: create/update/move/delete) applied to the current board state.
 
 Part 10: Now add a beautiful sidebar widget to the UI supporting full AI chat, and allowing the LLM (as it determines) to update the Kanban based on its Structured Outputs. If the AI updates the Kanban, then the UI should refresh automatically. Use the same operation list Structured Outputs format.
+Status: Completed on 2026-04-01.
