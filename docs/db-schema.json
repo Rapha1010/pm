@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "notes": [
+    "SQLite backing store for the MVP.",
+    "User auth is hardcoded in the UI for now, but the schema supports multiple users."
+  ],
+  "tables": [
+    {
+      "name": "users",
+      "columns": [
+        { "name": "id", "type": "text", "primaryKey": true },
+        { "name": "username", "type": "text", "unique": true, "nullable": false },
+        { "name": "password_hash", "type": "text", "nullable": false },
+        { "name": "created_at", "type": "text", "nullable": false }
+      ]
+    },
+    {
+      "name": "boards",
+      "columns": [
+        { "name": "id", "type": "text", "primaryKey": true },
+        { "name": "user_id", "type": "text", "nullable": false, "references": "users.id" },
+        { "name": "title", "type": "text", "nullable": false },
+        { "name": "created_at", "type": "text", "nullable": false },
+        { "name": "updated_at", "type": "text", "nullable": false }
+      ],
+      "indexes": [
+        { "name": "idx_boards_user_id", "columns": ["user_id"] }
+      ]
+    },
+    {
+      "name": "columns",
+      "columns": [
+        { "name": "id", "type": "text", "primaryKey": true },
+        { "name": "board_id", "type": "text", "nullable": false, "references": "boards.id" },
+        { "name": "title", "type": "text", "nullable": false },
+        { "name": "position", "type": "integer", "nullable": false }
+      ],
+      "indexes": [
+        { "name": "idx_columns_board_id", "columns": ["board_id"] }
+      ]
+    },
+    {
+      "name": "cards",
+      "columns": [
+        { "name": "id", "type": "text", "primaryKey": true },
+        { "name": "column_id", "type": "text", "nullable": false, "references": "columns.id" },
+        { "name": "title", "type": "text", "nullable": false },
+        { "name": "details", "type": "text", "nullable": false },
+        { "name": "position", "type": "integer", "nullable": false },
+        { "name": "created_at", "type": "text", "nullable": false },
+        { "name": "updated_at", "type": "text", "nullable": false }
+      ],
+      "indexes": [
+        { "name": "idx_cards_column_id", "columns": ["column_id"] }
+      ]
+    }
+  ]
+}

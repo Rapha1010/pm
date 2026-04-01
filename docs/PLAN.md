@@ -23,13 +23,15 @@ Part 4: Add in a fake user sign in experience (Complete)
 Now update so that on first hitting /, you need to log in with dummy credentials ("user", "password") in order to see the Kanban, and you can log out. Comprehensive tests (Vitest unit/integration + Playwright E2E).
 Status: Completed on 2026-04-01.
 
-Part 5: Database modeling
+Part 5: Database modeling (Complete)
 
 Now propose a database schema for the Kanban, saving it as JSON. Document the database approach in docs/ and get user sign off.
+Status: Completed on 2026-04-01.
 
-Part 6: Backend
+Part 6: Backend (Complete)
 
 Now add API routes to allow the backend to read and change the Kanban for a given user; test this thoroughly with backend unit tests. The database should be created if it doesn't exist.
+Status: Completed on 2026-04-01.
 
 Part 7: Frontend + Backend
 
