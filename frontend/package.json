@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "pretest:e2e": "docker compose -f ../docker-compose.yml up --build -d",
     "test:e2e": "playwright test",
+    "posttest:e2e": "docker compose -f ../docker-compose.yml down",
     "test:all": "npm run test:unit && npm run test:e2e"
   },
   "dependencies": {

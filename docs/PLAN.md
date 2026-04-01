@@ -33,9 +33,10 @@ Part 6: Backend (Complete)
 Now add API routes to allow the backend to read and change the Kanban for a given user; test this thoroughly with backend unit tests. The database should be created if it doesn't exist.
 Status: Completed on 2026-04-01.
 
-Part 7: Frontend + Backend
+Part 7: Frontend + Backend (Complete)
 
 Now have the frontend actually use the backend API, so that the app is a proper persistent Kanban board. Test very throughly (Vitest unit/integration + Playwright E2E).
+Status: Completed on 2026-04-01.
 
 Part 8: AI connectivity
 
